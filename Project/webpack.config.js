@@ -3,12 +3,15 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  entry: './src/index.js',
+  entry: {
+    main: './src/index.js',
+    contentScript: './src/contentScript.js'
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.js'
+    filename: '[name].bundle.js', // Separate bundles for each entry
+    clean: true // This will clean the dist folder before each build
   },
-  mode: 'development',
   module: {
     rules: [
       {
@@ -24,12 +27,13 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './public/index.html'
+      template: './public/index.html',
+      chunks: ['main'] // Only include main bundle in HTML
     }),
     new CopyPlugin({
       patterns: [
         { from: "public/manifest.json", to: "manifest.json" }
       ],
-    }),
+    })
   ]
 };
