@@ -169,14 +169,6 @@ const handleButtonDropdown = async (fieldType, value) => {
   }
 };
 
-// Function to handle standard input fields
-const fillInput = (input, value) => {
-  input.value = value || '';
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-  console.log(`Filled input field: '${input.name || input.id}' with value: '${value}'`);
-};
-
 // Function to handle select elements (if any)
 const fillSelect = (select, value, fieldType) => {
   const options = Array.from(select.options);
@@ -196,13 +188,53 @@ const fillSelect = (select, value, fieldType) => {
     console.log(`Filled select field: '${fieldType}' with value: '${value}'`);
     return true;
   }
+  console.warn(`Option '${value}' not found in select field: '${fieldType}'.`);
   return false;
+};
+
+// Function to handle the "I have a preferred name" checkbox and fill the preferred name field
+const handlePreferredName = async (preferredName) => {
+  if (!preferredName) {
+    return;
+  }
+
+  const checkbox = document.getElementById('input-8');
+  if (checkbox && !checkbox.checked) {
+    checkbox.click();
+    console.log(`Checked 'I have a preferred name' checkbox.`);
+  }
+
+  // Wait for the preferred name input to appear
+  await new Promise(resolve => setTimeout(resolve, 500)); // Adjust delay as needed
+
+  // Locate the preferred name input field
+  const preferredNameInput = document.querySelector('input[name="preferredName"]') || document.querySelector('#preferredName');
+  
+  if (preferredNameInput) {
+    fillInput(preferredNameInput, preferredName);
+    console.log(`Filled preferred name field with value: '${preferredName}'.`);
+  } else {
+    console.warn(`Preferred name input field not found.`);
+  }
+};
+
+// Function to handle standard input fields
+const fillInput = (input, value) => {
+  input.value = value || '';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  console.log(`Filled input field: '${input.name || input.id}' with value: '${value}'`);
 };
 
 // Main function to fill form fields
 const fillFormFields = async (userProfile) => {
   console.log('Starting to fill form fields with user profile:', userProfile);
   
+  // Handle the "I have a preferred name" checkbox and fill preferred name if applicable
+  if (userProfile.preferredName) {
+    await handlePreferredName(userProfile.preferredName);
+  }
+
   const inputs = document.querySelectorAll('input, select, textarea, button[aria-haspopup="listbox"]');
 
   for (const input of inputs) {
@@ -219,6 +251,7 @@ const fillFormFields = async (userProfile) => {
       )) {
         if (input.tagName.toLowerCase() === 'select') {
           fillSelect(input, userProfile[fieldType], fieldType);
+          console.log(`Filled select field: '${fieldType}' with value: '${userProfile[fieldType]}'`);
         } else if (input.tagName.toLowerCase() === 'button' && input.getAttribute('aria-haspopup') === 'listbox') {
           // Handle button-based dropdown
           const success = await handleButtonDropdown(fieldType, userProfile[fieldType]);
@@ -227,6 +260,7 @@ const fillFormFields = async (userProfile) => {
           }
         } else {
           fillInput(input, userProfile[fieldType]);
+          console.log(`Filled input field: '${fieldType}' with value: '${userProfile[fieldType]}'`);
         }
         break; // Move to the next input after handling
       }

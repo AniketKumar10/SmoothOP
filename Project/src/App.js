@@ -1,44 +1,31 @@
 import React, { useState } from 'react';
 import './App.css';
 
-const USER_PROFILE = {
-  prefix: 'Mr.', // Must match exactly as in DROPDOWN_VALUES.prefix
-  country: 'India', // Must match exactly as in DROPDOWN_VALUES.country
-  region: 'Maharashtra', // Must match exactly as in DROPDOWN_VALUES.region
-  phoneType: 'Mobile', // Must match exactly as in DROPDOWN_VALUES.phoneType
-  firstName: 'John',
-  middleName: '',
-  lastName: 'Doe',
-  address1: '123 Main St',
-  address2: 'Apt 4B',
-  city: 'Mumbai',
-  postalCode: '400001',
-  phone: '9876543210',
-  phoneCode: '+91',
-  preferredName: 'Johnny', // New field for preferred name
-  // ... any other additional fields
-};
-
 const App = () => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Function to handle the Analyze Page action
   const handleAnalyze = async () => {
     setLoading(true);
     setError(null);
     try {
+      // Query the active tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
+      // Prevent analyzing Chrome's internal pages
       if (tab.url.startsWith('chrome://')) {
         throw new Error('Cannot analyze Chrome system pages');
       }
 
+      // Inject the content script
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         files: ['contentScript.bundle.js']
       });
 
+      // Execute the analyzePage function from the content script
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => window.analyzePage()
@@ -59,14 +46,40 @@ const App = () => {
     }
   };
 
+  // Function to handle the Fill Out action
   const handleFillOut = async () => {
     try {
+      // Define the userProfile object with the hasPreferredName flag
+      const userProfile = {
+        prefix: 'Mr.',                // Example value
+        country: 'India',             // Example value
+        region: 'Maharashtra',        // Example value
+        phoneType: 'Mobile',          // Example value
+        firstName: 'John',            // Example value
+        middleName: '',               // Example value
+        lastName: 'Doe',              // Example value
+        address1: '123 Main St',      // Example value
+        address2: 'Apt 4B',            // Example value
+        city: 'Mumbai',               // Example value
+        postalCode: '400001',         // Example value
+        phone: '9876543210',           // Example value
+        phoneCode: '+91',              // Example value
+        hasPreferredName: false,      // Set to true to include preferred name
+      };
+
+      // Conditionally add preferredName if hasPreferredName is true
+      if (userProfile.hasPreferredName) {
+        userProfile.preferredName = 'Johnny'; // Example value
+      }
+
+      // Query the active tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       
+      // Execute the fillFormFields function from the content script with userProfile data
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: (profile) => window.fillFormFields(profile),
-        args: [USER_PROFILE]
+        args: [userProfile]
       });
 
       console.log('Form filled out successfully');
