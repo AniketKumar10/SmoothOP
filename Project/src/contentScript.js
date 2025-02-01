@@ -1,28 +1,28 @@
 const analyzePage = () => {
   const formFields = [];
-  const inputs = document.querySelectorAll('input, textarea, select');
-  
+  const inputs = document.querySelectorAll("input, textarea, select");
+
   if (inputs.length === 0) {
     return {
-      status: 'no-forms',
-      message: 'No form fields found on page',
-      fields: []
+      status: "no-forms",
+      message: "No form fields found on page",
+      fields: [],
     };
   }
 
-  inputs.forEach(input => {
+  inputs.forEach((input) => {
     formFields.push({
       type: input.type || input.tagName.toLowerCase(),
       name: input.name || input.id,
       value: input.value,
-      placeholder: input.placeholder
+      placeholder: input.placeholder,
     });
   });
-  
+
   return {
-    status: 'success',
+    status: "success",
     message: `Found ${formFields.length} form fields`,
-    fields: formFields
+    fields: formFields,
   };
 };
 
@@ -32,159 +32,156 @@ const handleAnalyze = async () => {
   setLoading(true);
   setError(null);
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    if (tab.url.startsWith('chrome://')) {
-      setError('Cannot analyze Chrome system pages');
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (tab.url.startsWith("chrome://")) {
+      setError("Cannot analyze Chrome system pages");
       return;
     }
 
     // First inject the content script
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['contentScript.bundle.js']
+      files: ["contentScript.bundle.js"],
     });
 
     // Then execute the analyze function
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: () => {
-        return typeof window.analyzePage === 'function' 
-          ? window.analyzePage() 
-          : { status: 'error', message: 'Analyzer not loaded', fields: [] };
-      }
+        return typeof window.analyzePage === "function"
+          ? window.analyzePage()
+          : { status: "error", message: "Analyzer not loaded", fields: [] };
+      },
     });
 
     const analysis = results[0].result;
-    console.log('Raw analysis:', analysis);
+    console.log("Raw analysis:", analysis);
 
-    if (!analysis || analysis.status === 'error') {
-      setError(analysis?.message || 'Analysis failed');
+    if (!analysis || analysis.status === "error") {
+      setError(analysis?.message || "Analysis failed");
       return;
     }
 
-    if (analysis.status === 'no-forms') {
+    if (analysis.status === "no-forms") {
       setError(analysis.message);
     } else {
       setAnalysis(analysis.fields);
     }
   } catch (error) {
-    console.error('Analysis error:', error);
-    setError('Analysis failed: ' + error.message);
+    console.error("Analysis error:", error);
+    setError("Analysis failed: " + error.message);
   } finally {
     setLoading(false);
   }
 };
 
+// Update FIELD_MAPPINGS for Workday
 const FIELD_MAPPINGS = {
-  prefix: ['prefix', 'title', 'legalNameSection_title'],
-  country: ['country', 'territory'],
-  region: ['region', 'state', 'province'],
-  phoneType: ['phone type', 'device type', 'phoneDeviceType'],
-  firstName: ['first name', 'firstname', 'given name'],
-  middleName: ['middle name', 'middlename'],
-  lastName: ['last name', 'lastname', 'family name', 'surname'],
-  address1: ['address line 1', 'address1', 'street'],
-  address2: ['address line 2', 'address2'],
-  city: ['city', 'town'],
-  postalCode: ['postal code', 'zip', 'pincode'],
-  phone: ['phone', 'telephone', 'mobile'],
-  phoneCode: ['country code', 'dialing code']
+  prefix: [
+    'title',
+    'prefix',
+    'legalNameSection_title',
+    'Prefix select one required'
+  ],
+  country: ['country', 'nation'],
+  region: ['region', 'state', 'province', 'territory', 'administrative area'],
+  phoneType: [
+    'phone type', 
+    'phone device',
+    'device type',
+    'phone device type',
+    'contact device'
+  ],
+  firstName: ['first name', 'given name'],
+  middleName: ['middle name'],
+  lastName: ['last name', 'family name', 'surname'],
+  address1: ['address line 1', 'address1', 'street address'],
+  address2: ['address line 2', 'address2', 'apt', 'suite'],
+  city: ['city'],
+  postalCode: ['postal code', 'zip code', 'zipcode'],
+  countryPhoneCode: ['country / territory phone code', 'phone code'],
+  phoneNumber: ['phone number', 'contact number', 'mobile number'],
+  preferredName: ['preferred name', 'nickname'],
 };
 
-// Map field types to their respective data-automation-id
-const FIELD_AUTOMATION_IDS = {
-  prefix: 'legalNameSection_title',
-  country: 'countryDropdown',
-  region: 'addressSection_countryRegion',
-  phoneType: 'phone-device-type'
+// Add Workday field mappings
+const WORKDAY_FIELD_MAPPINGS = {
+  prefix: [
+    'legalNameSection_title',
+    'Prefix select one required'
+  ],
+  region: [
+    'addressSection_region',
+    'addressSection_state',
+    'State select one required'
+  ],
+  phoneType: [
+    'phoneSection_deviceType',
+    'phoneDeviceType',
+    'Phone Device Type select one required'
+  ]
 };
 
-// Define dropdown specific values
-const DROPDOWN_VALUES = {
-  prefix: ['Dr.', 'Miss', 'Mr.', 'Mrs.', 'Ms.', 'Professor'],
-  country: ['India', 'United States', 'Canada', 'United Kingdom'], // Add more countries as needed
-  region: ['Andhra Pradesh', 'Maharashtra', 'Karnataka', 'Tamil Nadu'],
-  phoneType: ['Home', 'Work', 'Mobile']
+// Set to track filled fields and prevent duplicates
+const filledFields = new Set();
+
+// Function to simulate typing into an input field
+const simulateTyping = (input, value) => {
+  if (!input) return;
+
+  input.focus();
+  input.value = '';
+
+  for (let char of value) {
+    const eventOptions = {
+      key: char,
+      bubbles: true,
+      cancelable: true,
+    };
+
+    input.dispatchEvent(new KeyboardEvent('keydown', eventOptions));
+    input.dispatchEvent(new KeyboardEvent('keypress', eventOptions));
+    input.value += char;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true }));
+  }
+
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  input.blur();
+
+  console.log(`Simulated typing in field: '${input.name || input.id}' with value: '${value}'`);
 };
 
-// Utility function to simulate clicks
-const simulateClick = (element) => {
-  element.focus();
-  element.click();
-  element.dispatchEvent(new MouseEvent('click', {
-    view: window,
-    bubbles: true,
-    cancelable: true
-  }));
-};
-
-// Function to handle button-based dropdowns
-const handleButtonDropdown = async (fieldType, value) => {
-  console.log(`Handling dropdown for field: ${fieldType}, desired value: '${value}'`);
-
-  const automationId = FIELD_AUTOMATION_IDS[fieldType];
-  
-  let buttonSelector = `[data-automation-id="${automationId}"]`;
-  
-  if (!automationId) {
-    buttonSelector = `[aria-label*="${fieldType}"]`;
-  }
-
-  const button = document.querySelector(buttonSelector);
-  
-  if (!button) {
-    console.warn(`Dropdown button for '${fieldType}' not found using selector: ${buttonSelector}`);
-    return false;
-  }
-
-  // Open the dropdown
-  simulateClick(button);
-  console.log(`Clicked dropdown button for '${fieldType}'.`);
-
-  // Wait for dropdown options to render
-  await new Promise(resolve => setTimeout(resolve, 500)); // Adjust delay as needed
-  
-  // Locate the dropdown options
-  const options = document.querySelectorAll('[role="option"]');
-  console.log(`Found ${options.length} options for '${fieldType}'.`);
-
-  if (!options.length) {
-    console.warn(`No dropdown options found for '${fieldType}'.`);
-    return false;
-  }
-
-  // Find the matching option
-  const targetOption = Array.from(options).find(opt => 
-    opt.textContent.trim().toLowerCase() === value.toLowerCase()
-  );
-
-  if (targetOption) {
-    simulateClick(targetOption);
-    console.log(`Selected '${value}' for '${fieldType}'.`);
-    return true;
-  } else {
-    console.warn(`Option '${value}' not found for '${fieldType}'.`);
-    return false;
-  }
+// Function to handle standard input fields
+const fillInput = (input, value, fieldType) => {
+  if (!input || filledFields.has(fieldType)) return;
+  simulateTyping(input, value);
+  filledFields.add(fieldType);
+  console.log(`Filled input field: '${fieldType}' with value: '${value}'`);
 };
 
 // Function to handle select elements (if any)
 const fillSelect = (select, value, fieldType) => {
+  if (filledFields.has(fieldType)) return;
   const options = Array.from(select.options);
-  let matchedOption = options.find(opt => 
-    opt.text.toLowerCase() === value.toLowerCase()
+  let matchedOption = options.find(
+    (opt) => opt.text.toLowerCase() === value.toLowerCase()
   );
 
   if (!matchedOption) {
-    matchedOption = options.find(opt => 
+    matchedOption = options.find((opt) =>
       opt.text.toLowerCase().includes(value.toLowerCase())
     );
   }
 
   if (matchedOption) {
     select.value = matchedOption.value;
-    simulateClick(select);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    filledFields.add(fieldType);
     console.log(`Filled select field: '${fieldType}' with value: '${value}'`);
     return true;
   }
@@ -198,76 +195,225 @@ const handlePreferredName = async (preferredName) => {
     return;
   }
 
-  const checkbox = document.getElementById('input-8');
+  const checkbox = document.getElementById("input-8");
   if (checkbox && !checkbox.checked) {
     checkbox.click();
     console.log(`Checked 'I have a preferred name' checkbox.`);
   }
 
   // Wait for the preferred name input to appear
-  await new Promise(resolve => setTimeout(resolve, 500)); // Adjust delay as needed
+  await new Promise((resolve) => setTimeout(resolve, 500)); // Adjust delay as needed
 
   // Locate the preferred name input field
-  const preferredNameInput = document.querySelector('input[name="preferredName"]') || document.querySelector('#preferredName');
-  
+  const preferredNameInput =
+    document.querySelector('input[name="preferredName"]') ||
+    document.querySelector("#preferredName");
+
   if (preferredNameInput) {
-    fillInput(preferredNameInput, preferredName);
+    fillInput(preferredNameInput, preferredName, 'preferredName');
     console.log(`Filled preferred name field with value: '${preferredName}'.`);
   } else {
     console.warn(`Preferred name input field not found.`);
   }
 };
 
-// Function to handle standard input fields
-const fillInput = (input, value) => {
-  input.value = value || '';
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-  console.log(`Filled input field: '${input.name || input.id}' with value: '${value}'`);
+// Enhanced handleButtonDropdown function
+const handleButtonDropdown = async (fieldType, value) => {
+  console.log(`Attempting to select ${value} for ${fieldType}`);
+
+  // Find dropdown button
+  let button = null;
+  const selectors = WORKDAY_SELECTORS[fieldType] || [];
+  
+  for (const selector of selectors) {
+    button = document.querySelector(selector);
+    if (button) {
+      console.log(`Found button using selector: ${selector}`);
+      break;
+    }
+  }
+
+  if (!button) {
+    console.warn(`Dropdown button not found for ${fieldType}`);
+    return false;
+  }
+
+  // Click to open dropdown
+  button.click();
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Value mappings for different types
+  const valueMappings = {
+    region: {
+      'mumbai': ['maharashtra'],
+      'delhi': ['delhi ncr', 'new delhi'],
+      // Add more state mappings as needed
+    },
+    phoneType: {
+      'mobile': ['cell phone', 'mobile phone', 'cellular'],
+      'home': ['landline', 'residence'],
+      'work': ['business', 'office']
+    }
+  };
+
+  // Find and click matching option
+  const options = document.querySelectorAll('[role="option"]');
+  console.log(`Found ${options.length} options for ${fieldType}`);
+
+  const targetOption = Array.from(options).find(option => {
+    const optionText = option.textContent.trim().toLowerCase();
+    const targetValue = value.toLowerCase();
+    
+    // Direct match
+    if (optionText === targetValue) return true;
+    
+    // Check mappings
+    const mappings = valueMappings[fieldType]?.[targetValue] || [];
+    return mappings.some(mapping => optionText.includes(mapping));
+  });
+
+  if (targetOption) {
+    targetOption.click();
+    console.log(`Selected ${targetOption.textContent} for ${fieldType}`);
+    return true;
+  }
+
+  console.warn(`No matching option found for ${fieldType}: ${value}`);
+  return false;
+};
+
+// Add simulateClick function
+const simulateClick = (element) => {
+  if (!element) return;
+  
+  element.focus();
+  element.click();
+  const clickEvent = new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    view: window
+  });
+  element.dispatchEvent(clickEvent);
+};
+
+// Add FIELD_AUTOMATION_IDS
+const FIELD_AUTOMATION_IDS = {
+  prefix: 'prefix-dropdown',
+  country: 'country-dropdown',
+  region: 'region-dropdown',
+  phoneType: 'device-type-dropdown'
+  // Add more as needed
+};
+
+// Add specific selectors for fields
+const FIELD_SELECTORS = {
+  prefix: [
+    '[aria-label*="prefix"]',
+    '[aria-label*="title"]',
+    '[id*="prefix"]',
+    '[name*="prefix"]',
+    // Workday specific selectors
+    '[data-automation-id*="prefix"]',
+    '[class*="gwt-ListBox"]' // Common class in Workday dropdowns
+  ],
+  phoneType: [
+    '[aria-label*="phone type"]',
+    '[aria-label*="device type"]',
+    '[id*="phone-type"]',
+    '[id*="device-type"]',
+    '[name*="phoneType"]'
+  ],
+  region: [
+    '[aria-label*="region"]',
+    '[aria-label*="state"]',
+    '[id*="region"]',
+    '[name*="region"]'
+  ]
+};
+
+// Add Workday specific selectors
+const WORKDAY_SELECTORS = {
+  prefix: [
+    '[data-automation-id="legalNameSection_title"]',
+    'button[aria-label*="Prefix"]',
+    'button[aria-haspopup="listbox"]'
+  ],
+  region: [
+    '[data-automation-id="addressSection_region"]',
+    'button[aria-label*="State"]',
+    'button[aria-label*="Region"]'
+  ],
+  phoneType: [
+    '[data-automation-id="phoneSection_deviceType"]',
+    'button[aria-label*="Phone Device Type"]'
+  ]
 };
 
 // Main function to fill form fields
 const fillFormFields = async (userProfile) => {
-  console.log('Starting to fill form fields with user profile:', userProfile);
-  
+  console.log("Starting to fill form fields with user profile:", userProfile);
+  filledFields.clear(); // Clear previously filled fields
+
   // Handle the "I have a preferred name" checkbox and fill preferred name if applicable
-  if (userProfile.preferredName) {
+  if (userProfile.hasPreferredName && userProfile.preferredName) {
     await handlePreferredName(userProfile.preferredName);
   }
 
-  const inputs = document.querySelectorAll('input, select, textarea, button[aria-haspopup="listbox"]');
+  const inputs = document.querySelectorAll(
+    'input, select, textarea, button[aria-haspopup="listbox"]'
+  );
+  console.log(`Found ${inputs.length} input fields`);
 
   for (const input of inputs) {
-    const identifier = (input.name || input.id || input.placeholder || '').toLowerCase();
+    const identifier = (
+      input.name ||
+      input.id ||
+      input.placeholder ||
+      ""
+    ).toLowerCase();
     const labelElement = document.querySelector(`label[for="${input.id}"]`);
-    const labelText = labelElement ? labelElement.textContent.toLowerCase() : '';
-    const ariaLabel = input.getAttribute('aria-label')?.toLowerCase() || '';
+    const labelText = labelElement
+      ? labelElement.textContent.toLowerCase()
+      : "";
+    const ariaLabel = input.getAttribute("aria-label")?.toLowerCase() || "";
 
     for (const [fieldType, patterns] of Object.entries(FIELD_MAPPINGS)) {
-      if (patterns.some(p => 
-        identifier.includes(p) || 
-        labelText.includes(p) || 
-        ariaLabel.includes(p)
-      )) {
-        if (input.tagName.toLowerCase() === 'select') {
-          fillSelect(input, userProfile[fieldType], fieldType);
-          console.log(`Filled select field: '${fieldType}' with value: '${userProfile[fieldType]}'`);
-        } else if (input.tagName.toLowerCase() === 'button' && input.getAttribute('aria-haspopup') === 'listbox') {
-          // Handle button-based dropdown
-          const success = await handleButtonDropdown(fieldType, userProfile[fieldType]);
+      if (filledFields.has(fieldType)) continue;
+      if (
+        patterns.some(
+          (p) =>
+            identifier.includes(p) ||
+            labelText.includes(p) ||
+            ariaLabel.includes(p)
+        )
+      ) {
+        console.log(`Found field ${fieldType} with value ${userProfile[fieldType]}`);
+        
+        if (input.tagName.toLowerCase() === "select") {
+          await fillSelect(input, userProfile[fieldType], fieldType);
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } else if (
+          input.tagName.toLowerCase() === "button" &&
+          input.getAttribute("aria-haspopup") === "listbox"
+        ) {
+          const success = await handleButtonDropdown(
+            fieldType,
+            userProfile[fieldType]
+          );
           if (success) {
-            console.log(`Successfully filled dropdown field: '${fieldType}'`);
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         } else {
-          fillInput(input, userProfile[fieldType]);
-          console.log(`Filled input field: '${fieldType}' with value: '${userProfile[fieldType]}'`);
+          fillInput(input, userProfile[fieldType], fieldType);
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
-        break; // Move to the next input after handling
+        break;
       }
     }
   }
 
-  console.log('Form filling completed.');
+  console.log("Form filling completed.");
+  return true;
 };
 
 // Make functions available to the extension
