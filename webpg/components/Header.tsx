@@ -20,7 +20,7 @@ export default function Header() {
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
-              <Button variant="ghost">Log In</Button>
+              <Button variant="ghost">Sign In</Button>
             </SignInButton>
             <Link href="/sign-up">
               <Button>Sign Up</Button>
