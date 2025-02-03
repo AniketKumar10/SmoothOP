@@ -1,7 +1,21 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
+  const { user } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <h1 className="text-4xl font-bold mb-8">Welcome to SmoothOp</h1>
@@ -15,5 +29,6 @@ export default function Home() {
         </Link>
       </div>
     </div>
-  )
+  );
 }
+
