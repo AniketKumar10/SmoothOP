@@ -1,27 +1,39 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useUser } from "@clerk/nextjs"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+interface JobApplication {
+  company: string;
+  position: string;
+  status: string;
+}
 
 export default function Dashboard() {
-  const { user } = useUser()
-  const [jobApplications, setJobApplications] = useState([])
-  const [newApplication, setNewApplication] = useState({ company: "", position: "", status: "Applied" })
+  const { user } = useUser();
+  const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
+  const [newApplication, setNewApplication] = useState<JobApplication>({
+    company: "",
+    position: "",
+    status: "Applied",
+  });
 
-  const handleInputChange = (e) => {
-    setNewApplication({ ...newApplication, [e.target.name]: e.target.value })
-  }
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    setNewApplication({ ...newApplication, [e.target.name]: e.target.value });
+  };
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setJobApplications([...jobApplications, newApplication])
-    setNewApplication({ company: "", position: "", status: "Applied" })
-  }
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setJobApplications([...jobApplications, newApplication]);
+    setNewApplication({ company: "", position: "", status: "Applied" });
+  };
 
-  if (!user) return null
+  if (!user) return null;
 
   return (
     <div className="space-y-8">
@@ -32,7 +44,13 @@ export default function Dashboard() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="company">Company</Label>
-            <Input id="company" name="company" value={newApplication.company} onChange={handleInputChange} required />
+            <Input
+              id="company"
+              name="company"
+              value={newApplication.company}
+              onChange={handleInputChange}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="position">Position</Label>
@@ -90,6 +108,5 @@ export default function Dashboard() {
         </div>
       </section>
     </div>
-  )
+  );
 }
-
