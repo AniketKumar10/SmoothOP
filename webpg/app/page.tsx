@@ -34,9 +34,9 @@ export default function Home() {
   ]
 
   const stats = [
-    { number: "90%", label: "Less Application Time" },
-    { number: "75%", label: "Higher Interview Rate" },
-    { number: "50+", label: "Supported Job Platforms" },
+    { number: 90, label: "Less Application Time", suffix: "%" },
+    { number: 75, label: "Higher Interview Rate", suffix: "%" },
+    { number: 50, label: "Supported Job Platforms", suffix: "+" },
   ]
 
   const testimonials = [
@@ -123,7 +123,19 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <div className="text-4xl font-bold text-[#1A365D]">{stat.number}</div>
+                <div className="text-4xl font-bold text-[#1A365D]">
+                  <CountUp 
+                    from={0} 
+                    to={stat.number} 
+                    separator="," 
+                    direction="up" 
+                    duration={2} 
+                    className="count-up-text" 
+                    suffix={stat.suffix}
+                    onStart={() => {}} 
+                    onEnd={() => {}} 
+                  />
+                </div>
                 <div className="text-gray-600">{stat.label}</div>
               </motion.div>
             ))}
@@ -244,4 +256,3 @@ export default function Home() {
     </div>
   )
 }
-
