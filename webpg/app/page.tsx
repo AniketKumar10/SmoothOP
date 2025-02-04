@@ -26,10 +26,15 @@ export default function Home() {
       title: "Resume-Job Match Score",
       description: "See how well you match with each position",
     },
+    // {
+    //   icon: "📱",
+    //   title: "Cross-Platform Tracker",
+    //   description: "Monitor all your applications in one place",
+    // },
     {
-      icon: "📱",
-      title: "Cross-Platform Tracker",
-      description: "Monitor all your applications in one place",
+      icon: "🌐",
+      title: "Comprehensive Job Database",
+      description: "Access thousands of curated job listings from across the market in real-time",
     },
   ]
 
