@@ -141,7 +141,7 @@ const TextPressure = ({
 
     animate();
     return () => cancelAnimationFrame(rafId);
-  }, [width, weight, italic, alpha, chars.length]);
+  }, [width, weight, italic, alpha, chars.length, setSize]);
 
   return (
     <div
